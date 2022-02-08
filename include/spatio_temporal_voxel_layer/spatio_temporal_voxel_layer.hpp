@@ -44,60 +44,60 @@
 #define SPATIO_TEMPORAL_VOXEL_LAYER__SPATIO_TEMPORAL_VOXEL_LAYER_HPP_
 
 // STL
-#include <time.h>
-#include <vector>
-#include <string>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <time.h>
+#include <vector>
 // voxel grid
 #include "spatio_temporal_voxel_layer/spatio_temporal_voxel_grid.hpp"
 // ROS
-#include "rclcpp/rclcpp.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
+#include "rclcpp/rclcpp.hpp"
 // costmap
-#include "nav2_costmap_2d/layer.hpp"
-#include "nav2_costmap_2d/layered_costmap.hpp"
 #include "nav2_costmap_2d/costmap_layer.hpp"
 #include "nav2_costmap_2d/footprint.hpp"
+#include "nav2_costmap_2d/layer.hpp"
+#include "nav2_costmap_2d/layered_costmap.hpp"
 // openVDB
 #include "openvdb/openvdb.h"
 // msgs
+#include "geometry_msgs/msg/point.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
-#include "geometry_msgs/msg/point.hpp"
 #include "spatio_temporal_voxel_layer/srv/save_grid.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 // projector
 #include "laser_geometry/laser_geometry.hpp"
 // tf
-#include "tf2_ros/transform_listener.h"
-#include "tf2_ros/message_filter.h"
 #include "message_filters/subscriber.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "tf2/buffer_core.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_ros/message_filter.h"
+#include "tf2_ros/transform_listener.h"
 
-namespace spatio_temporal_voxel_layer
-{
+namespace spatio_temporal_voxel_layer {
 
 // conveniences for line lengths
-typedef std::vector<std::shared_ptr<message_filters::SubscriberBase>>::iterator
-  observation_subscribers_iter;
-typedef std::vector<std::shared_ptr<buffer::MeasurementBuffer>>::iterator observation_buffers_iter;
+typedef std::vector<
+    std::shared_ptr<message_filters::SubscriberBase<rclcpp::Node>>>::iterator
+    observation_subscribers_iter;
+typedef std::vector<std::shared_ptr<buffer::MeasurementBuffer>>::iterator
+    observation_buffers_iter;
 
 // Core ROS voxel layer class
-class SpatioTemporalVoxelLayer : public nav2_costmap_2d::CostmapLayer
-{
+class SpatioTemporalVoxelLayer : public nav2_costmap_2d::CostmapLayer {
 public:
   SpatioTemporalVoxelLayer(void);
   virtual ~SpatioTemporalVoxelLayer(void);
 
   // Core Functions
   virtual void onInitialize(void);
-  virtual void updateBounds(
-    double robot_x, double robot_y, double robot_yaw,
-    double * min_x, double * min_y, double * max_x, double * max_y);
-  virtual void updateCosts(
-    nav2_costmap_2d::Costmap2D & master_grid, int min_i, int min_j, int max_i, int max_j);
+  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw,
+                            double *min_x, double *min_y, double *max_x,
+                            double *max_y);
+  virtual void updateCosts(nav2_costmap_2d::Costmap2D &master_grid, int min_i,
+                           int min_j, int max_i, int max_j);
 
   // Functions to interact with other layers
   virtual void matchSize(void);
@@ -107,72 +107,78 @@ public:
   virtual void activate(void);
   virtual void deactivate(void);
 
-  virtual bool isClearable() {return true;}
+  virtual bool isClearable() { return true; }
 
   // Functions for sensor feeds
-  bool GetMarkingObservations(std::vector<observation::MeasurementReading> & marking_observations)
-  const;
-  bool GetClearingObservations(std::vector<observation::MeasurementReading> & marking_observations)
-  const;
+  bool GetMarkingObservations(
+      std::vector<observation::MeasurementReading> &marking_observations) const;
+  bool GetClearingObservations(
+      std::vector<observation::MeasurementReading> &marking_observations) const;
   void ObservationsResetAfterReading() const;
 
   // Functions to interact with maps
   void UpdateROSCostmap(
-    double * min_x, double * min_y, double * max_x, double * max_y,
-    std::unordered_set<volume_grid::occupany_cell> & cleared_cells);
-  bool updateFootprint(
-    double robot_x, double robot_y, double robot_yaw,
-    double * min_x, double * min_y, double * max_x, double * max_y);
+      double *min_x, double *min_y, double *max_x, double *max_y,
+      std::unordered_set<volume_grid::occupany_cell> &cleared_cells);
+  bool updateFootprint(double robot_x, double robot_y, double robot_yaw,
+                       double *min_x, double *min_y, double *max_x,
+                       double *max_y);
   void ResetGrid(void);
 
   // Saving grids callback for openVDB
   void SaveGridCallback(
-    const std::shared_ptr<rmw_request_id_t>/*header*/,
-    std::shared_ptr<spatio_temporal_voxel_layer::srv::SaveGrid::Request> req,
-    std::shared_ptr<spatio_temporal_voxel_layer::srv::SaveGrid::Response> resp);
+      const std::shared_ptr<rmw_request_id_t> /*header*/,
+      std::shared_ptr<spatio_temporal_voxel_layer::srv::SaveGrid::Request> req,
+      std::shared_ptr<spatio_temporal_voxel_layer::srv::SaveGrid::Response>
+          resp);
 
 private:
   // Sensor callbacks
-  void LaserScanCallback(
-    sensor_msgs::msg::LaserScan::ConstSharedPtr message,
-    const std::shared_ptr<buffer::MeasurementBuffer> & buffer);
+  void
+  LaserScanCallback(sensor_msgs::msg::LaserScan::ConstSharedPtr message,
+                    const std::shared_ptr<buffer::MeasurementBuffer> &buffer);
   void LaserScanValidInfCallback(
-    sensor_msgs::msg::LaserScan::ConstSharedPtr raw_message,
-    const std::shared_ptr<buffer::MeasurementBuffer> & buffer);
-  void PointCloud2Callback(
-    sensor_msgs::msg::PointCloud2::ConstSharedPtr message,
-    const std::shared_ptr<buffer::MeasurementBuffer> & buffer);
+      sensor_msgs::msg::LaserScan::ConstSharedPtr raw_message,
+      const std::shared_ptr<buffer::MeasurementBuffer> &buffer);
+  void
+  PointCloud2Callback(sensor_msgs::msg::PointCloud2::ConstSharedPtr message,
+                      const std::shared_ptr<buffer::MeasurementBuffer> &buffer);
 
   // Functions for adding static obstacle zones
-  bool AddStaticObservations(const observation::MeasurementReading & obs);
+  bool AddStaticObservations(const observation::MeasurementReading &obs);
   bool RemoveStaticObservations(void);
 
   // Enable/Disable callback
   void BufferEnablerCallback(
-    const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
-    std::shared_ptr<std_srvs::srv::SetBool::Response> response,
-    const std::shared_ptr<buffer::MeasurementBuffer> buffer,
-    const std::shared_ptr<message_filters::SubscriberBase> & subcriber);
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+      std::shared_ptr<std_srvs::srv::SetBool::Response> response,
+      const std::shared_ptr<buffer::MeasurementBuffer> buffer,
+      const std::shared_ptr<message_filters::SubscriberBase<rclcpp::Node>>
+          &subcriber);
 
   /**
    * @brief Callback executed when a paramter change is detected
    * @param parameters list of changed parameters
    */
   rcl_interfaces::msg::SetParametersResult
-    dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters);
+  dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters);
 
   laser_geometry::LaserProjection _laser_projector;
-  std::vector<std::shared_ptr<message_filters::SubscriberBase>> _observation_subscribers;
-  std::vector<std::shared_ptr<tf2_ros::MessageFilterBase>> _observation_notifiers;
+  std::vector<std::shared_ptr<message_filters::SubscriberBase<rclcpp::Node>>>
+      _observation_subscribers;
+  std::vector<std::shared_ptr<tf2_ros::MessageFilterBase>>
+      _observation_notifiers;
   std::vector<std::shared_ptr<buffer::MeasurementBuffer>> _observation_buffers;
   std::vector<std::shared_ptr<buffer::MeasurementBuffer>> _marking_buffers;
   std::vector<std::shared_ptr<buffer::MeasurementBuffer>> _clearing_buffers;
-  std::vector<rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr> _buffer_enabler_servers;
+  std::vector<rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr>
+      _buffer_enabler_servers;
 
   bool _publish_voxels, _mapping_mode, was_reset_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr _voxel_pub;
-  rclcpp::Service<spatio_temporal_voxel_layer::srv::SaveGrid>::SharedPtr _grid_saver;
+  rclcpp::Service<spatio_temporal_voxel_layer::srv::SaveGrid>::SharedPtr
+      _grid_saver;
   std::unique_ptr<rclcpp::Duration> _map_save_duration;
   rclcpp::Time _last_map_save_time;
   std::string _global_frame;
@@ -188,8 +194,9 @@ private:
   std::string _topics_string;
 
   // Dynamic parameters handler
-  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
+      dyn_params_handler;
 };
 
-}  // namespace spatio_temporal_voxel_layer
-#endif  // SPATIO_TEMPORAL_VOXEL_LAYER__SPATIO_TEMPORAL_VOXEL_LAYER_HPP_
+} // namespace spatio_temporal_voxel_layer
+#endif // SPATIO_TEMPORAL_VOXEL_LAYER__SPATIO_TEMPORAL_VOXEL_LAYER_HPP_
